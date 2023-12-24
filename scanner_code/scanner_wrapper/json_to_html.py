@@ -39,6 +39,7 @@ def generate_html(results):
                             <th>Path</th>
                             <th>Suspected Code</th>
                             <th>Message</th>
+                            <th>Suggestion</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -48,12 +49,13 @@ def generate_html(results):
         path = result.get('path', '')
         suspected_code = result.get('extra', {}).get('lines', '')
         message = result.get('extra', {}).get('message', '')
-        
+        suggestion = result.get('extra', {}).get('fix', '')
+
         # Extract the last part of the rule
         rule_parts = rule.split('.')
         last_part = rule_parts[-1]
-        
-        html += f'<tr><td>{last_part}</td><td>{path}</td><td>{suspected_code}</td><td>{message}</td></tr>'
+
+        html += f'<tr><td>{last_part}</td><td>{path}</td><td>{suspected_code}</td><td>{message}</td><td>{suggestion}</td></tr>'
 
     html += '''
                     </tbody>
