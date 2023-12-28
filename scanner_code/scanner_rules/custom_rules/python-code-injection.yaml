@@ -1,5 +1,5 @@
 rules:
-- id: risky-python-functions
+- id: python-code-injection
   patterns:
     - pattern-either:
         - pattern: eval(...)

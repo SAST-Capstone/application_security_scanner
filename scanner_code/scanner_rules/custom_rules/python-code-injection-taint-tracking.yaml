@@ -1,5 +1,5 @@
 rules:
-- id: python-taint-analysis
+- id: python-code-injection-taint-analysis
   mode: taint
   message: Unsanitized user input might be used in a risky function, leading to potential code injection.
   languages: [python]
