@@ -1,0 +1,34 @@
+rules:
+- id: python-ssrf-taint-tracking
+  mode: taint
+  sources:
+    - pattern: flask.request.args.get(...)
+    - pattern: flask.request.form.get(...)
+    - pattern: flask.request.values.get(...)
+    - pattern: flask.request.json.get(...)
+    - pattern: request.args.get(...)
+    - pattern: request.form.get(...)
+    - pattern: request.values.get(...)
+    - pattern: request.json.get(...)
+    - pattern: request.GET.get(...)
+    - pattern: request.POST.get(...)
+  sinks:
+    - pattern: requests.get($TAINTED, ...)
+    - pattern: requests.post($TAINTED, ...)
+    - pattern: urllib.request.urlopen($TAINTED, ...)
+    - pattern: http.client.HTTPConnection($TAINTED, ...)
+    - pattern: socket.socket(...).connect(($TAINTED, ...))
+    - pattern: subprocess.run($TAINTED, ...)
+    - pattern: subprocess.Popen($TAINTED, ...)
+    - pattern: os.system($TAINTED)
+    - pattern: exec($TAINTED)
+    - pattern: eval($TAINTED)
+  sanitizers:
+    - pattern: urllib.parse.quote(...)
+    - pattern: cgi.escape(...)
+    - pattern: html.escape(...)
+    - pattern: re.escape(...)
+  message: |
+    Potential SSRF vulnerability detected. Data from user-controlled sources should be validated and sanitized before use in network requests or command execution.
+  languages: [python]
+  severity: ERROR
