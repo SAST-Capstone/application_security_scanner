@@ -1,23 +1,31 @@
 rules:
-- id: python-ssrf-requests-get
+- id: python-ssrf-vulnerability
   patterns:
     - pattern-either:
         - pattern: requests.get($URL, ...)
         - pattern: requests.post($URL, ...)
         - pattern: requests.put($URL, ...)
         - pattern: requests.delete($URL, ...)
+        - pattern: requests.patch($URL, ...)
         - pattern: requests.head($URL, ...)
         - pattern: requests.options($URL, ...)
-        - pattern: requests.patch($URL, ...)
-    - pattern-not-inside: |
-        def $FUNC(...):
-            ...
-            $URL = "http://..."
-            ...
-            requests.get($URL, ...)
-  message: "SSRF potential via requests method with user input"
+        - pattern: urllib.request.urlopen($URL, ...)
+        - pattern: http.client.HTTPConnection($HOST, $PORT, ...)
+        - pattern: http.client.HTTPSConnection($HOST, $PORT, ...)
+        - pattern: requests.get($URL, allow_redirects=True)
+        - pattern: socket.socket(...).connect(($HOST, $PORT))
+        - pattern: urllib.parse.urlparse($URL)
+        - pattern: xml.etree.ElementTree.fromstring($XML)
+        - pattern: pickle.loads($DATA)
+        - pattern: subprocess.run($COMMAND, ...)
+        - pattern: subprocess.Popen($COMMAND, ...)
+        - pattern: os.system($COMMAND)
+        - pattern: exec($COMMAND)
+        - pattern: eval($COMMAND)
+        - pattern: requests.get($URL, verify=False)
+        - pattern: requests.request(method=..., url=$URL, ...)
+  message: |
+    Potential SSRF vulnerability detected. This function call may lead to Server-Side Request Forgery if user input is not properly validated and sanitized. Ensure that any external URL or command is from a trusted source and properly sanitized.
   languages: [python]
   severity: WARNING
-  fix: |
-    Ensure that $URL is not directly controlled by user input, or if it must be,
-    implement strict input validation/sanitization and use allowlists for URLs.
+
