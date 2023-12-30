@@ -13,4 +13,4 @@ CODE_TO_SCAN="/home/runner/work/$REPO_NAME/$REPO_NAME"
 
 MY_RULES="custom_rules"
 python3 $SCANNER_PATH/$WRAPPER/scan.py $CODE_TO_SCAN $SCANNER_PATH/$RULES/$MY_RULES
-python3 $SCANNER_PATH/$WRAPPER/json_to_html.py $SCANNER_PATH/output.json /var/www/html/
+python3 $SCANNER_PATH/$WRAPPER/json_to_html.py $SCANNER_PATH/output.json $SCANNER_PATH
