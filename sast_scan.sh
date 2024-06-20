@@ -13,7 +13,7 @@ echo "Repository Name: $REPO_NAME"
 CODE_TO_SCAN="/home/runner/work/$REPO_NAME/$REPO_NAME"
 echo "Code to Scan: $CODE_TO_SCAN"
 
-MY_RULES="custom_rules/python-sql-injection.yaml"
+MY_RULES="custom_rules"
 
 # Run the scan
 python3 "$WRAPPER/sast_scan.py" "$CODE_TO_SCAN" "$RULES/$MY_RULES"
