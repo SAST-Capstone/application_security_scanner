@@ -1,5 +1,5 @@
 rules:
-- id: python-sql-injection
+- id: SQL-Injection
   patterns:
     - pattern-either:
         - pattern: |
@@ -36,4 +36,3 @@ rules:
   severity: ERROR
   languages: [python]
   fix: "Use parameterized queries or prepared statements instead."
-
