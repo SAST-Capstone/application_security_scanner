@@ -16,7 +16,7 @@ echo "Code to Scan: $CODE_TO_SCAN"
 MY_RULES="custom_rules"
 
 # Run the scan
-python3 "$WRAPPER/sast_scan.py" "$CODE_TO_SCAN" "$RULES/$MY_RULES"
+python3 "$WRAPPER/sast_scan.py" "$CODE_TO_SCAN" "$RULES/$MY_RULES" --metrics=off
 
 # Check if scan results exist
 if [ -f "$WRAPPER/scan_results.json" ]; then
