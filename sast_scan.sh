@@ -2,7 +2,7 @@
 
 SCANNER_PATH=$(pwd)
 echo "Scanner Path: $SCANNER_PATH"
-RULES="$SCANNER_PATH/scanner_code/scanner_rules"
+RULES="$SCANNER_PATH/scanner_code/scanner_rules/python-sql-injection.yaml"
 WRAPPER="$SCANNER_PATH/scanner_code/scanner_wrapper"
 
 # Extract the repository name from the GITHUB_REPOSITORY environment variable
