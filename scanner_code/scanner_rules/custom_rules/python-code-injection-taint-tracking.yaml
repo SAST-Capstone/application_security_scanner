@@ -1,28 +1,30 @@
 rules:
-- id: python-code-injection-taint-analysis
-  mode: taint
-  message: Unsanitized user input might be used in a risky function, leading to potential code injection.
-  languages: [python]
-  severity: ERROR
-  pattern-sources:
-    - pattern: flask.request.args.get(...)
-    - pattern: flask.request.form.get(...)
-    - pattern: flask.request.values.get(...)
-    - pattern: request.GET.get(...)
-    - pattern: request.POST.get(...)
-    - pattern: request.values.get(...)
-  pattern-sinks:
-    - pattern: eval(...)
-    - pattern: exec(...)
-    - pattern: os.system(...)
-    - pattern: subprocess.call(...)
-    - pattern: subprocess.Popen(...)
-  pattern-sanitizers:
-    - pattern: $X.encode(...)
-    - pattern: $X.decode(...)
-    - pattern: html.escape(...)
-    - pattern: re.escape(...)
-    - pattern: sqlalchemy.text(...)
-  pattern-propagators:
-    - pattern: $X = $Y
-    - pattern: return $X
+  - id: Code-Injection
+    message: Unsanitized user input might be used in a risky function, leading to potential code injection.
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    taint:
+      sources:
+        - pattern: $X = flask.request.args.get(...)
+        - pattern: $X = flask.request.form.get(...)
+        - pattern: $X = flask.request.values.get(...)
+        - pattern: $X = request.GET.get(...)
+        - pattern: $X = request.POST.get(...)
+        - pattern: $X = request.values.get(...)
+      sinks:
+      - pattern: eval($X)
+      - pattern: exec($X)
+      - pattern: os.system($X)
+      - pattern: subprocess.call($X)
+      - pattern: subprocess.Popen($X)
+    sanitizers:
+      - pattern: $X.encode(...)
+      - pattern: $X.decode(...)
+      - pattern: html.escape($X)
+      - pattern: re.escape($X)
+      - pattern: sqlalchemy.text($X)
+    propagators:
+      - pattern: $X = $Y
+      - pattern: return $X
+
