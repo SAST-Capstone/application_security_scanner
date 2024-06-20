@@ -2,7 +2,7 @@
 
 SCANNER_PATH=$(pwd)
 echo "Scanner Path: $SCANNER_PATH"
-RULES="$SCANNER_PATH/scanner_code/scanner_rules/python-sql-injection.yaml"
+RULES="$SCANNER_PATH/scanner_code/scanner_rules"
 WRAPPER="$SCANNER_PATH/scanner_code/scanner_wrapper"
 
 # Extract the repository name from the GITHUB_REPOSITORY environment variable
@@ -13,7 +13,7 @@ echo "Repository Name: $REPO_NAME"
 CODE_TO_SCAN="/home/runner/work/$REPO_NAME/$REPO_NAME"
 echo "Code to Scan: $CODE_TO_SCAN"
 
-MY_RULES="custom_rules"
+MY_RULES="custom_rules/python-sql-injection.yaml"
 
 # Run the scan
 python3 "$WRAPPER/sast_scan.py" "$CODE_TO_SCAN" "$RULES/$MY_RULES"
