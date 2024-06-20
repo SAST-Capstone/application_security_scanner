@@ -10,7 +10,7 @@ def load_scan_results(file_path):
 
 # Send the scan results to the database
 def send_scan_results(api_key, scan_results):
-    url = 'http://<YOUR_SERVER>/save_scan_results/'  # Replace with your actual server URL
+    url = 'http://127.0.0.1:8000/save_scan_results/'  # Replace with your actual server URL
     headers = {
         'Authorization': f'Token {api_key}',
         'Content-Type': 'application/json'
