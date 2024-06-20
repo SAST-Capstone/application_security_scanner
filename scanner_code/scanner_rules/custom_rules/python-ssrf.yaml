@@ -1,5 +1,5 @@
 rules:
-- id: python-ssrf-vulnerability
+- id: SSRF
   patterns:
     - pattern-either:
         - pattern: requests.get($URL, ...)
@@ -28,4 +28,3 @@ rules:
     Potential SSRF vulnerability detected. This function call may lead to Server-Side Request Forgery if user input is not properly validated and sanitized. Ensure that any external URL or command is from a trusted source and properly sanitized.
   languages: [python]
   severity: WARNING
-
