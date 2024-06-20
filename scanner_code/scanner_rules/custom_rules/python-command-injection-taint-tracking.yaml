@@ -1,39 +1,44 @@
 rules:
-- id: Command-Injection
+- id: Code-Injection
+  patterns:
+    - pattern-either:
+        - pattern: eval(...)
+        - pattern: exec(...)
+        - pattern: compile(...)
+        - pattern: getattr(...)
+        - pattern: setattr(...)
+        - pattern: open(...)
+        - pattern: os.system(...)
+        - pattern: os.popen(...)
+        - pattern: subprocess.Popen(...)
+        - pattern: subprocess.call(...)
+        - pattern-inside: import re
+        - pattern: re.match(...)
+        - pattern: re.fullmatch(...)
+        - pattern: re.search(...)
+        - pattern: re.sub(...)
+        - pattern: re.subn(...)
+        - pattern: re.split(...)
+        - pattern: re.findall(...)
+        - pattern: re.finditer(...)
+        - pattern-inside: import pickle
+        - pattern: pickle.loads(...)
+        - pattern: pickle.load(...)
+        - pattern-inside: import __import__
+        - pattern: __import__(...)
+        - pattern-inside: import os
+        - pattern: os.environ[...]
+        - pattern: os.getenv(...)
+        - pattern-inside: import hashlib
+        - pattern: hashlib.md5(...)
+        - pattern: hashlib.sha1(...)
+        - pattern: hashlib.sha256(...)
+        - pattern: hashlib.sha512(...)
+        - pattern-inside: import cryptography
+        - pattern: cryptography.encrypt(...)
+        - pattern: cryptography.decrypt(...)
+        - pattern: cryptography.sign(...)
+        - pattern: cryptography.verify(...)
+  message: "Use of potentially risky function detected: $FUNC. Review for security implications."
   languages: [python]
-  message: |
-    Potential command injection detected. Unsanitized input flows into a command execution function.
-    Ensure input is properly sanitized.
-  severity: ERROR
-  mode: taint
-  taint:
-    sources:
-      - pattern: |
-          $USER_INPUT = input(...)
-      - pattern: |
-          $USER_INPUT = $REQUEST.$DATA
-    sinks:
-      - pattern: |
-          os.system($USER_INPUT)
-      - pattern: |
-          subprocess.call($USER_INPUT, ...)
-      - pattern: |
-          subprocess.run($USER_INPUT, ...)
-      - pattern: |
-          subprocess.Popen($USER_INPUT, ...)
-      - pattern: |
-          eval($USER_INPUT)
-      - pattern: |
-          exec($USER_INPUT)
-    sanitizers:
-      - pattern: |
-          shlex.quote($USER_INPUT)
-      - pattern: |
-          $USER_INPUT.replace(...)
-      - pattern-inside: |
-          import re
-          ...
-        pattern: |
-          re.escape($USER_INPUT)
-
-  fix: Use safer alternatives and ensure to sanitize all user inputs
+  severity: WARNING
