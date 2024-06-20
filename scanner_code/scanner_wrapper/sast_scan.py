@@ -8,7 +8,7 @@ from io import BytesIO
 from openai import OpenAI
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
@@ -31,6 +31,21 @@ def get_gpt_suggestion(code_snippet):
 
 def scan_code(file_path: str, rules_path: str) -> str:
     try:
+        logger.debug(f"Checking existence of file: {file_path}")
+        if not os.path.isfile(file_path):
+            logger.error(f"File {file_path} is not a valid file.")
+            raise FileNotFoundError(f"File {file_path} not found or is not a file.")
+
+        logger.debug(f"Checking existence of rules path: {rules_path}")
+        if not os.path.isdir(rules_path):
+            logger.error(f"Rules path {rules_path} is not a valid directory.")
+            raise FileNotFoundError(f"Rules path {rules_path} not found or is not a directory.")
+
+        logger.debug(f"Listing rules files in {rules_path}")
+        for root, dirs, files in os.walk(rules_path):
+            for file in files:
+                logger.debug(f"Found rule file: {file}")
+
         semgrep_command = [
             "semgrep", "--config", rules_path, "--json", file_path
         ]
