@@ -5,7 +5,7 @@ SCANNER_PATH=$(pwd)
 echo "Scanner Path: $SCANNER_PATH"
 
 # Define the rules and wrapper paths
-RULES="$SCANNER_PATH/scanner_code/scanner_rules"
+RULES="$SCANNER_PATH/scanner_code/scanner_rules/custom_rules"
 WRAPPER="$SCANNER_PATH/scanner_code/scanner_wrapper"
 
 # Extract the repository name from the GITHUB_REPOSITORY environment variable
