@@ -29,12 +29,13 @@ def get_gpt_suggestion(code_snippet):
     suggestion = response.choices[0].message.content.strip()
     return suggestion
 
-def scan_code(file_path: str, rules_path: str) -> str:
+def scan_code(file_paths: list, rules_path: str) -> str:
     try:
-        logger.debug(f"Checking existence of file: {file_path}")
-        if not os.path.isfile(file_path):
-            logger.error(f"File {file_path} is not a valid file.")
-            raise FileNotFoundError(f"File {file_path} not found or is not a file.")
+        for file_path in file_paths:
+            logger.debug(f"Checking existence of file: {file_path}")
+            if not os.path.isfile(file_path):
+                logger.error(f"File {file_path} is not a valid file.")
+                raise FileNotFoundError(f"File {file_path} not found or is not a file.")
 
         logger.debug(f"Checking existence of rules path: {rules_path}")
         if not os.path.isdir(rules_path):
@@ -46,17 +47,22 @@ def scan_code(file_path: str, rules_path: str) -> str:
             for file in files:
                 logger.debug(f"Found rule file: {file}")
 
-        semgrep_command = [
-            "semgrep", "--config", rules_path, "--json", file_path
-        ]
-        logger.info(f"Running command: {' '.join(semgrep_command)}")
-        semgrep_output = subprocess.check_output(semgrep_command, cwd=os.path.dirname(file_path), stderr=subprocess.STDOUT)
-        semgrep_output_str = semgrep_output.decode("utf-8")
-        logger.info(f"Semgrep output:\n{semgrep_output_str}")
+        all_results = {'results': []}
+        for file_path in file_paths:
+            semgrep_command = [
+                "semgrep", "--config", rules_path, "--json", file_path
+            ]
+            logger.info(f"Running command: {' '.join(semgrep_command)}")
+            semgrep_output = subprocess.check_output(semgrep_command, cwd=os.path.dirname(file_path), stderr=subprocess.STDOUT)
+            semgrep_output_str = semgrep_output.decode("utf-8")
+            logger.info(f"Semgrep output:\n{semgrep_output_str}")
 
-        json_start_idx = semgrep_output_str.index('{')
-        json_output = semgrep_output_str[json_start_idx:].strip()
-        return json_output
+            json_start_idx = semgrep_output_str.index('{')
+            json_output = semgrep_output_str[json_start_idx:].strip()
+            semgrep_results = json.loads(json_output)
+            all_results['results'].extend(semgrep_results.get('results', []))
+        
+        return json.dumps(all_results)
     except subprocess.CalledProcessError as e:
         logger.error(f"Semgrep failed: {e.output.decode('utf-8')}")
         raise
@@ -139,15 +145,31 @@ if __name__ == "__main__":
         sys.exit(1)
     code_path = sys.argv[1]
     rules_path = sys.argv[2]
+
     try:
+        # Collect all Python files in the directory
+        files_to_scan = []
+        if os.path.isdir(code_path):
+            for root, _, files in os.walk(code_path):
+                for file in files:
+                    if file.endswith('.py'):
+                        files_to_scan.append(os.path.join(root, file))
+        else:
+            files_to_scan.append(code_path)
+        
+        if not files_to_scan:
+            raise FileNotFoundError("No Python files found to scan.")
+        
         # Perform rule-based scan
-        semgrep_output = scan_code(code_path, rules_path)
+        semgrep_output = scan_code(files_to_scan, rules_path)
         scan_results = parse_semgrep_output(semgrep_output)
+
         # Generate suggestions using GPT
         for result in scan_results['results']:
             code_snippet = result['extra']['lines']
             gpt_suggestion = get_gpt_suggestion(code_snippet)
             result['suggestion'] = gpt_suggestion
+
         # Save the results
         with open('scan_results.json', 'w') as f:
             json.dump(scan_results, f)
