@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 # GPT API client
 client = OpenAI(api_key='sk-proj-cl6UF6XJCRlN1dCBHl05T3BlbkFJHQoUUmYusKgpZ44qMLhI')
 
-
 def get_gpt_suggestion(code_snippet):
     messages = [
         {"role": "system", "content": "You are a specialized AI system expert in analyzing vulnerable Python code for the specific vulnerabilities "
@@ -29,7 +28,6 @@ def get_gpt_suggestion(code_snippet):
     )
     suggestion = response.choices[0].message.content.strip()
     return suggestion
-
 
 def analyze_python_code(code, filename):
     messages = [
@@ -86,14 +84,26 @@ def analyze_python_code(code, filename):
             "Suggestion": "Check the API response and ensure it is in the correct format."
         }]
 
+def analyze_files_or_zip(uploaded_file):
+    uploaded_file.seek(0)
+    file_content = uploaded_file.read()
+    results = []  # Consolidate all results into this list
+    if zipfile.is_zipfile(BytesIO(file_content)):
+        with zipfile.ZipFile(BytesIO(file_content), 'r') as zip_file:
+            for name in zip_file.namelist():
+                if name.endswith('.py'):
+                    with zip_file.open(name) as file_in_zip:
+                        code = file_in_zip.read().decode('utf-8')
+                        result = analyze_python_code(code, name)
+                        results.extend(result)  # Append the list of results
+    else:
+        code = file_content.decode('utf-8')
+        result = analyze_python_code(code, uploaded_file.name)
+        results.extend(result)  # Append the list of results
+    return results  # Return a single consolidated list of dictionaries
 
 def scan_code(file_path: str, rules_path: str) -> str:
     try:
-        # Ensure the virtual environment's bin directory is in the PATH
-        env_path = os.environ.get("PATH", "")
-        venv_bin_path = "/home/kali/Desktop/PyCatenaccio/env/bin"
-        os.environ["PATH"] = f"{venv_bin_path}:{env_path}"
-
         # Check if the file is accessible before running Semgrep
         if not os.path.isfile(file_path):
             logger.error(f"File {file_path} is not a valid file.")
@@ -122,14 +132,12 @@ def scan_code(file_path: str, rules_path: str) -> str:
         logger.error(f"Semgrep failed: {e.output.decode('utf-8')}")
         raise
 
-
 def parse_semgrep_output(semgrep_output: str):
     try:
         return json.loads(semgrep_output)
     except json.JSONDecodeError as e:
         logger.error(f"Error parsing Semgrep output: {e}")
         raise
-
 
 def main():
     # Retrieve paths from command-line arguments
