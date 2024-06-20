@@ -1,5 +1,5 @@
 rules:
-- id: python-command-injection-taint-tracking
+- id: Command-Injection
   languages: [python]
   message: |
     Potential command injection detected. Unsanitized input flows into a command execution function.
@@ -37,5 +37,3 @@ rules:
           re.escape($USER_INPUT)
 
   fix: Use safer alternatives and ensure to sanitize all user inputs
-
-
