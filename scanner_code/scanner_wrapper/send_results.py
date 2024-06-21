@@ -1,33 +1,47 @@
+import json
 import requests
 import sys
-import json
 import os
+import logging
 
-# Load the scan results from the specified JSON file
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 def load_scan_results(file_path):
-    with open(file_path, 'r') as file:
-        return json.load(file)
+    try:
+        with open(file_path, 'r') as file:
+            scan_results = json.load(file)
+        return scan_results
+    except FileNotFoundError:
+        logger.error(f"Scan results file {file_path} not found!")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        logger.error(f"Error parsing scan results file {file_path}: {e}")
+        sys.exit(1)
 
-# Send the scan results to the database
-def send_scan_results(api_key, scan_results):
-    url = 'http://127.0.0.1:8000/save_scan_results/'  # Replace with your actual server URL
+def send_results_to_database(scan_results, api_key):
+    url = 'http://127.0.0.1:8000/save_scan_results/'  # Replace with your server's URL
     headers = {
         'Authorization': f'Token {api_key}',
         'Content-Type': 'application/json'
     }
-    response = requests.post(url, headers=headers, json=scan_results)
-    if response.status_code == 201:
-        print("Scan results saved successfully!")
-    else:
-        print(f"Failed to save scan results: {response.status_code} - {response.text}")
 
-if __name__ == '__main__':
+    try:
+        response = requests.post(url, headers=headers, json=scan_results)
+        response.raise_for_status()
+        logger.info(f"Scan results sent successfully. Server response: {response.json()}")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to send scan results: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python send_results.py <path_to_scan_results>")
+        sys.exit(1)
+
     scan_results_file = sys.argv[1]
     api_key = os.getenv('MODULE_API_KEY')
 
-    if not api_key:
-        print("API key not found in environment variables")
-        sys.exit(1)
-
     scan_results = load_scan_results(scan_results_file)
-    send_scan_results(api_key, scan_results)
+    send_results_to_database(scan_results, api_key)
