@@ -5,15 +5,15 @@ import json
 import subprocess
 import zipfile
 from io import BytesIO
-from openai import OpenAI
+import openai
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI client
-openai_api_key = os.getenv('OPENAI_API_KEY')
-client = OpenAI(api_key=openai_api_key)
+# Initialize OpenAI API client
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+openai.api_key = OPENAI_API_KEY
 
 def get_gpt_suggestion(code_snippet):
     messages = [
@@ -21,12 +21,12 @@ def get_gpt_suggestion(code_snippet):
                                       "which are ONLY SQL injection, command injection, code injection, SSTI, and SSRF. Review the Python code provided and identify any potential vulnerabilities and give suggestions to fix them."},
         {"role": "user", "content": f"Provide a suggestion to fix the following code vulnerability:\n\n{code_snippet}"}
     ]
-    response = client.chat_completions.create(
-        model="gpt-4",
+    response = openai.ChatCompletion.create(
+        model="gpt-4o",
         messages=messages,
         max_tokens=150
     )
-    suggestion = response.choices[0].message.content.strip()
+    suggestion = response.choices[0].message["content"].strip()
     return suggestion
 
 def scan_code(file_paths: list, rules_path: str) -> list:
@@ -100,12 +100,12 @@ def analyze_python_code(code, filename):
             "content": f"Filename: {filename}\n\nPlease analyze the code below for potential security vulnerabilities:\n\n{code}\n\nPlease provide the output in JSON format."
         }
     ]
-    response = client.chat_completions.create(
-        model="gpt-4",
+    response = openai.ChatCompletion.create(
+        model="gpt-4o",
         messages=messages,
         max_tokens=1024
     )
-    output_text = response.choices[0].message.content.strip()
+    output_text = response.choices[0].message["content"].strip()
     try:
         if output_text.startswith("```json"):
             output_text = output_text[7:-3].strip()
