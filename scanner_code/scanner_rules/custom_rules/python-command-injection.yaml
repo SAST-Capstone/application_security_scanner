@@ -1,5 +1,5 @@
 rules:
-- id: python-command-injection-taint
+- id: Command-Injection
   languages: [python]
   message: |
     Potential command injection detected. Unsanitized input flows into a command execution function.
