@@ -1,5 +1,5 @@
 rules:
-- id: python-command-injection-pattern
+- id: Command-Injection
   languages: [python]
   message: Potential command injection detected. Ensure input is properly sanitized.
   severity: ERROR
