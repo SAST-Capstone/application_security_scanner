@@ -26,7 +26,7 @@ def get_gpt_suggestion(code_snippet):
         messages=messages,
         max_tokens=150
     )
-    suggestion = response.choices[0].message["content"].strip()
+    suggestion = response.choices[0].message.content.strip()
     return suggestion
 
 def scan_code(file_paths: list, rules_path: str) -> list:
@@ -105,7 +105,7 @@ def analyze_python_code(code, filename):
         messages=messages,
         max_tokens=1024
     )
-    output_text = response.choices[0].message["content"].strip()
+    output_text = response.choices[0].message.content.strip()
     try:
         if output_text.startswith("```json"):
             output_text = output_text[7:-3].strip()
