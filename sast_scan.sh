@@ -14,6 +14,7 @@ python3 $SCANNER_PATH/$WRAPPER/sast_scan.py $CODE_TO_SCAN $SCANNER_PATH/$RULES/c
 # Ensure scan results exist before sending
 RESULTS_FILE="$SCANNER_PATH/$WRAPPER/scan_results.json"
 if [ -f "$RESULTS_FILE" ]; then
+    echo "Scan results file found at $RESULTS_FILE"
     # Send the results to the database
     python3 $SCANNER_PATH/$WRAPPER/send_results.py $RESULTS_FILE
 else
