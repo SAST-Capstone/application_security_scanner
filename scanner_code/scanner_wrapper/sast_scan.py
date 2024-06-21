@@ -53,21 +53,23 @@ def scan_code(file_paths: list, rules_path: str) -> str:
                 "semgrep", "--config", rules_path, "--json", file_path
             ]
             logger.info(f"Running command: {' '.join(semgrep_command)}")
-            semgrep_output = subprocess.check_output(semgrep_command, cwd=os.path.dirname(file_path), stderr=subprocess.STDOUT)
-            semgrep_output_str = semgrep_output.decode("utf-8")
-            logger.info(f"Semgrep output:\n{semgrep_output_str}")
+            try:
+                semgrep_output = subprocess.check_output(semgrep_command, cwd=os.path.dirname(file_path), stderr=subprocess.STDOUT)
+                semgrep_output_str = semgrep_output.decode("utf-8")
+                logger.info(f"Semgrep output:\n{semgrep_output_str}")
 
-            json_start_idx = semgrep_output_str.index('{')
-            json_output = semgrep_output_str[json_start_idx:].strip()
-            semgrep_results = json.loads(json_output)
-            all_results['results'].extend(semgrep_results.get('results', []))
-        
+                json_start_idx = semgrep_output_str.index('{')
+                json_output = semgrep_output_str[json_start_idx:].strip()
+                semgrep_results = json.loads(json_output)
+                all_results['results'].extend(semgrep_results.get('results', []))
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Semgrep failed: {e.output.decode('utf-8')}")
+                raise
+
         return json.dumps(all_results)
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Semgrep failed: {e.output.decode('utf-8')}")
+    except Exception as e:
+        logger.error(f"Error during scanning: {e}")
         raise
-    except ValueError:
-        raise ValueError("No JSON output found in Semgrep output")
 
 def parse_semgrep_output(semgrep_output: str):
     try:
@@ -156,24 +158,17 @@ if __name__ == "__main__":
                         files_to_scan.append(os.path.join(root, file))
         else:
             files_to_scan.append(code_path)
-        
-        if not files_to_scan:
-            raise FileNotFoundError("No Python files found to scan.")
-        
-        # Perform rule-based scan
+
         semgrep_output = scan_code(files_to_scan, rules_path)
         scan_results = parse_semgrep_output(semgrep_output)
 
-        # Generate suggestions using GPT
-        for result in scan_results['results']:
-            code_snippet = result['extra']['lines']
-            gpt_suggestion = get_gpt_suggestion(code_snippet)
-            result['suggestion'] = gpt_suggestion
+        # Save the results to a file
+        results_file = "scan_results.json"
+        with open(results_file, "w") as f:
+            json.dump(scan_results, f, indent=4)
+        print(f"Scan results saved to {results_file}")
 
-        # Save the results
-        with open('scan_results.json', 'w') as f:
-            json.dump(scan_results, f)
-        print("Scan completed successfully. Results saved to scan_results.json")
     except Exception as e:
-        logger.error(f"Error during scanning: {e}")
+        logger.error(f"Error: {e}")
+        print("Scan results file not found!")
         sys.exit(1)
