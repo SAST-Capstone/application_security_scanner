@@ -18,11 +18,6 @@ def scan_code(file_path: str, rules_path: str) -> str:
         venv_bin_path = "/home/kali/Desktop/PyCatenaccio/env/bin"
         os.environ["PATH"] = f"{venv_bin_path}:{env_path}"
 
-        # Check if the file is accessible before running Semgrep
-        if not os.path.isfile(file_path):
-            logger.error(f"File {file_path} is not a valid file.")
-            raise FileNotFoundError(f"File {file_path} not found or is not a file.")
-
         # Run Semgrep with the provided rules path
         semgrep_command = [
             "semgrep", "--config", rules_path, "--json", file_path
@@ -30,8 +25,7 @@ def scan_code(file_path: str, rules_path: str) -> str:
         logger.info(f"Running command: {' '.join(semgrep_command)}")
         logger.debug(f"File to scan: {file_path}")
 
-        # Set working directory to where the file is located
-        semgrep_output = subprocess.check_output(semgrep_command, cwd=os.path.dirname(file_path), stderr=subprocess.STDOUT)
+        semgrep_output = subprocess.check_output(semgrep_command, stderr=subprocess.STDOUT)
         semgrep_output_str = semgrep_output.decode("utf-8")
         logger.info(f"Semgrep output:\n{semgrep_output_str}")
 
@@ -62,6 +56,21 @@ def save_scan_results(scan_results, file_path):
         logger.error(f"Failed to save scan results to {file_path}: {e}")
         raise
 
+def scan_directory(directory_path: str, rules_path: str):
+    all_results = []
+    for root, _, files in os.walk(directory_path):
+        for file in files:
+            if file.endswith(".py"):
+                file_path = os.path.join(root, file)
+                logger.debug(f"Scanning file: {file_path}")
+                try:
+                    semgrep_output = scan_code(file_path, rules_path)
+                    scan_results = parse_semgrep_output(semgrep_output)
+                    all_results.extend(scan_results)
+                except Exception as e:
+                    logger.error(f"Error scanning file {file_path}: {e}")
+    return all_results
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python sast_scan.py <path_to_code> <path_to_rules>")
@@ -70,12 +79,14 @@ if __name__ == "__main__":
     code_path = sys.argv[1]
     rules_path = sys.argv[2]
 
-    logger.debug(f"Checking existence of file: {code_path}")
     logger.debug(f"Checking existence of rules path: {rules_path}")
 
     try:
-        semgrep_output = scan_code(code_path, rules_path)
-        scan_results = parse_semgrep_output(semgrep_output)
+        if os.path.isdir(code_path):
+            scan_results = scan_directory(code_path, rules_path)
+        else:
+            logger.error(f"File {code_path} is not a valid file or directory.")
+            sys.exit(1)
 
         results_file_path = os.path.join(os.path.dirname(__file__), 'scan_results.json')
         save_scan_results(scan_results, results_file_path)
