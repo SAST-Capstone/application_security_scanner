@@ -1,44 +1,81 @@
+import logging
+import sys
 import os
 import json
 import subprocess
-import logging
-import sys
+import zipfile
+from io import BytesIO
+from openai import OpenAI
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Replace with your OpenAI API key
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+# Initialize OpenAI client
+openai_api_key = os.getenv('OPENAI_API_KEY')
+client = OpenAI(api_key=openai_api_key)
 
-def scan_code(file_path: str, rules_path: str) -> str:
+def get_gpt_suggestion(code_snippet):
+    messages = [
+        {"role": "system", "content": "You are a specialized AI system expert in analyzing vulnerable Python code for the specific vulnerabilities "
+                                      "which are ONLY SQL injection, command injection, code injection, SSTI, and SSRF. Review the Python code provided and identify any potential vulnerabilities and give suggestions to fix them."},
+        {"role": "user", "content": f"Provide a suggestion to fix the following code vulnerability:\n\n{code_snippet}"}
+    ]
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=messages,
+        max_tokens=150
+    )
+    suggestion = response.choices[0].message["content"].strip()
+    return suggestion
+
+def scan_code(file_paths: list, rules_path: str) -> list:
+    all_results = []
     try:
-        # Ensure the virtual environment's bin directory is in the PATH
-        env_path = os.environ.get("PATH", "")
-        venv_bin_path = "/home/kali/Desktop/PyCatenaccio/env/bin"
-        os.environ["PATH"] = f"{venv_bin_path}:{env_path}"
+        for file_path in file_paths:
+            logger.debug(f"Checking existence of file: {file_path}")
+            if not os.path.isfile(file_path):
+                logger.error(f"File {file_path} is not a valid file.")
+                raise FileNotFoundError(f"File {file_path} not found or is not a file.")
 
-        # Run Semgrep with the provided rules path
-        semgrep_command = [
-            "semgrep", "--config", rules_path, "--json", file_path
-        ]
-        logger.info(f"Running command: {' '.join(semgrep_command)}")
-        logger.debug(f"File to scan: {file_path}")
+        logger.debug(f"Checking existence of rules path: {rules_path}")
+        if not os.path.isdir(rules_path):
+            logger.error(f"Rules path {rules_path} is not a valid directory.")
+            raise FileNotFoundError(f"Rules path {rules_path} not found or is not a directory.")
 
-        semgrep_output = subprocess.check_output(semgrep_command, stderr=subprocess.STDOUT)
-        semgrep_output_str = semgrep_output.decode("utf-8")
-        logger.info(f"Semgrep output:\n{semgrep_output_str}")
+        logger.debug(f"Listing rules files in {rules_path}")
+        for root, dirs, files in os.walk(rules_path):
+            for file in files:
+                logger.debug(f"Found rule file: {file}")
 
-        # Extract JSON part from the output
-        try:
-            json_start_idx = semgrep_output_str.index('{')
-            json_output = semgrep_output_str[json_start_idx:].strip()
-            return json_output
-        except ValueError:
-            raise ValueError("No JSON output found in Semgrep output")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Semgrep failed: {e.output.decode('utf-8')}")
+        for file_path in file_paths:
+            semgrep_command = [
+                "semgrep", "--config", rules_path, "--json", file_path
+            ]
+            logger.info(f"Running command: {' '.join(semgrep_command)}")
+            try:
+                semgrep_output = subprocess.check_output(semgrep_command, cwd=os.path.dirname(file_path), stderr=subprocess.STDOUT)
+                semgrep_output_str = semgrep_output.decode("utf-8")
+                logger.info(f"Semgrep output:\n{semgrep_output_str}")
+
+                json_start_idx = semgrep_output_str.index('{')
+                json_output = semgrep_output_str[json_start_idx:].strip()
+                semgrep_results = json.loads(json_output)
+                
+                for result in semgrep_results.get('results', []):
+                    code_snippet = result["extra"]["lines"]
+                    suggestion = get_gpt_suggestion(code_snippet)
+                    result["suggestion"] = suggestion
+
+                all_results.extend(semgrep_results.get('results', []))
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Semgrep failed: {e.output.decode('utf-8')}")
+                raise
+
+    except Exception as e:
+        logger.error(f"Error during scanning: {e}")
         raise
+    return all_results
 
 def parse_semgrep_output(semgrep_output: str):
     try:
@@ -47,49 +84,96 @@ def parse_semgrep_output(semgrep_output: str):
         logger.error(f"Error parsing Semgrep output: {e}")
         raise
 
-def save_scan_results(scan_results, file_path):
+def analyze_python_code(code, filename):
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a specialized AI system expert in Static Application Security Testing to analyze Python code for the specific vulnerabilities "
+                "which are ONLY SQL-injection, command-injection, code-injection, SSTI, and SSRF. Review the Python code provided and identify any potential vulnerabilities. "
+                "Provide the output in JSON format with the following keys: Vulnerability Name, File Path, Suspected Code, and Suggestion (give suggestion for fixing)."
+                "Vulnerability Name should be as follows: SQL-injection, Command-Injection, Code-Injection, SSTI, or SSRF"
+            )
+        },
+        {
+            "role": "user",
+            "content": f"Filename: {filename}\n\nPlease analyze the code below for potential security vulnerabilities:\n\n{code}\n\nPlease provide the output in JSON format."
+        }
+    ]
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=messages,
+        max_tokens=1024
+    )
+    output_text = response.choices[0].message.content.strip()
     try:
-        with open(file_path, 'w') as file:
-            json.dump(scan_results, file, indent=4)
-        logger.info(f"Scan results saved to {file_path}")
-    except IOError as e:
-        logger.error(f"Failed to save scan results to {file_path}: {e}")
-        raise
+        if output_text.startswith("```json"):
+            output_text = output_text[7:-3].strip()
+        result_list = json.loads(output_text)
+        logger.debug(f"Parsed GPT Result: {result_list}")
+        return result_list
+    except json.JSONDecodeError as e:
+        logger.error(f"JSONDecodeError: {e}")
+        return [{
+            "Vulnerability Name": "Error",
+            "File Path": filename,
+            "Suspected Code": "",
+            "Suggestion": "Check the API response and ensure it is in the correct format."
+        }]
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return [{
+            "Vulnerability Name": "Error",
+            "File Path": filename,
+            "Suspected Code": "",
+            "Suggestion": "Check the API response and ensure it is in the correct format."
+        }]
 
-def scan_directory(directory_path: str, rules_path: str):
-    all_results = []
-    for root, _, files in os.walk(directory_path):
-        for file in files:
-            if file.endswith(".py"):
-                file_path = os.path.join(root, file)
-                logger.debug(f"Scanning file: {file_path}")
-                try:
-                    semgrep_output = scan_code(file_path, rules_path)
-                    scan_results = parse_semgrep_output(semgrep_output)
-                    all_results.extend(scan_results)
-                except Exception as e:
-                    logger.error(f"Error scanning file {file_path}: {e}")
-    return all_results
+def analyze_files_or_zip(uploaded_file):
+    uploaded_file.seek(0)
+    file_content = uploaded_file.read()
+    results = []
+    if zipfile.is_zipfile(BytesIO(file_content)):
+        with zipfile.ZipFile(BytesIO(file_content), 'r') as zip_file:
+            for name in zip_file.namelist():
+                if name.endswith('.py'):
+                    with zip_file.open(name) as file_in_zip:
+                        code = file_in_zip.read().decode('utf-8')
+                        result = analyze_python_code(code, name)
+                        results.extend(result)
+    else:
+        code = file_content.decode('utf-8')
+        result = analyze_python_code(code, uploaded_file.name)
+        results.extend(result)
+    return results
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python sast_scan.py <path_to_code> <path_to_rules>")
         sys.exit(1)
-
     code_path = sys.argv[1]
     rules_path = sys.argv[2]
 
-    logger.debug(f"Checking existence of rules path: {rules_path}")
-
     try:
+        # Collect all Python files in the directory
+        files_to_scan = []
         if os.path.isdir(code_path):
-            scan_results = scan_directory(code_path, rules_path)
+            for root, _, files in os.walk(code_path):
+                for file in files:
+                    if file.endswith('.py'):
+                        files_to_scan.append(os.path.join(root, file))
         else:
-            logger.error(f"File {code_path} is not a valid file or directory.")
-            sys.exit(1)
+            files_to_scan.append(code_path)
 
-        results_file_path = os.path.join(os.path.dirname(__file__), 'scan_results.json')
-        save_scan_results(scan_results, results_file_path)
+        scan_results = scan_code(files_to_scan, rules_path)
+
+        # Save the results to a file
+        results_file = os.path.join(os.path.dirname(__file__), 'scan_results.json')
+        with open(results_file, "w") as f:
+            json.dump({"results": scan_results}, f, indent=4)
+        print(f"Scan results saved to {results_file}")
+
     except Exception as e:
-        logger.error(f"Error during scanning: {e}")
+        logger.error(f"Error: {e}")
+        print("Scan results file not found!")
         sys.exit(1)
