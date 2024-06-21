@@ -21,12 +21,12 @@ def get_gpt_suggestion(code_snippet):
                                       "which are ONLY SQL injection, command injection, code injection, SSTI, and SSRF. Review the Python code provided and identify any potential vulnerabilities and give suggestions to fix them."},
         {"role": "user", "content": f"Provide a suggestion to fix the following code vulnerability:\n\n{code_snippet}"}
     ]
-    response = client.chat.completions.create(
-        model="gpt-4o",
+    response = client.chat_completions.create(
+        model="gpt-4",
         messages=messages,
         max_tokens=150
     )
-    suggestion = response.choices[0].message["content"].strip()
+    suggestion = response.choices[0].message.content.strip()
     return suggestion
 
 def scan_code(file_paths: list, rules_path: str) -> list:
@@ -100,8 +100,8 @@ def analyze_python_code(code, filename):
             "content": f"Filename: {filename}\n\nPlease analyze the code below for potential security vulnerabilities:\n\n{code}\n\nPlease provide the output in JSON format."
         }
     ]
-    response = client.chat.completions.create(
-        model="gpt-4o",
+    response = client.chat_completions.create(
+        model="gpt-4",
         messages=messages,
         max_tokens=1024
     )
