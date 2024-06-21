@@ -21,7 +21,7 @@ def load_scan_results(file_path):
         sys.exit(1)
 
 def send_results_to_database(scan_results, api_key):
-    url = 'http://127.0.0.1:8000/save_scan_results/'  # Replace with your server's URL
+    url = 'https://1e5c-2001-8f8-1539-2251-789d-8474-a3d8-d6cc.ngrok-free.app/save_scan_results/'  # Replace with your server's URL
     headers = {
         'Authorization': f'Token {api_key}',
         'Content-Type': 'application/json'
