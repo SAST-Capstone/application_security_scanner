@@ -22,7 +22,7 @@ def get_gpt_suggestion(code_snippet):
         {"role": "user", "content": f"Provide a suggestion to fix the following code vulnerability:\n\n{code_snippet}"}
     ]
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=messages,
         max_tokens=150
     )
@@ -101,7 +101,7 @@ def analyze_python_code(code, filename):
         }
     ]
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=messages,
         max_tokens=1024
     )
