@@ -6,6 +6,8 @@ import subprocess
 import zipfile
 from io import BytesIO
 import openai
+import requests
+from time import sleep
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -22,7 +24,7 @@ def get_gpt_suggestion(code_snippet):
         {"role": "user", "content": f"Provide a suggestion to fix the following code vulnerability:\n\n{code_snippet}"}
     ]
     response = openai.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4",
         messages=messages,
         max_tokens=150
     )
@@ -101,7 +103,7 @@ def analyze_python_code(code, filename):
         }
     ]
     response = openai.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4",
         messages=messages,
         max_tokens=1024
     )
@@ -147,6 +149,22 @@ def analyze_files_or_zip(uploaded_file):
         results.extend(result)
     return results
 
+def send_scan_results(file_path):
+    url = 'http://127.0.0.1:8000/save_scan_results/'
+    retries = 5
+    for attempt in range(retries):
+        try:
+            with open(file_path, 'rb') as f:
+                response = requests.post(url, files={'file': f})
+            response.raise_for_status()
+            logger.info(f"Successfully sent scan results to {url}")
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Attempt {attempt + 1}/{retries} failed: {e}")
+            sleep(5)  # Wait before retrying
+    logger.error("All attempts to send scan results failed.")
+    return False
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python sast_scan.py <path_to_code> <path_to_rules>")
@@ -155,10 +173,13 @@ if __name__ == "__main__":
     rules_path = sys.argv[2]
 
     try:
-        # Collect all Python files in the directory
+        # Collect all Python files in the user repository directory
         files_to_scan = []
         if os.path.isdir(code_path):
             for root, _, files in os.walk(code_path):
+                # Exclude the application_security_scanner directory
+                if 'application_security_scanner' in root:
+                    continue
                 for file in files:
                     if file.endswith('.py'):
                         files_to_scan.append(os.path.join(root, file))
@@ -172,6 +193,10 @@ if __name__ == "__main__":
         with open(results_file, "w") as f:
             json.dump({"results": scan_results}, f, indent=4)
         print(f"Scan results saved to {results_file}")
+
+        # Attempt to send the scan results
+        if not send_scan_results(results_file):
+            print("Failed to send scan results to server. Results are saved locally.")
 
     except Exception as e:
         logger.error(f"Error: {e}")
