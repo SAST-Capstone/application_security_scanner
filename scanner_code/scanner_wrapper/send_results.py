@@ -43,5 +43,10 @@ if __name__ == "__main__":
     scan_results_file = sys.argv[1]
     api_key = os.getenv('MODULE_API_KEY')
 
+    logger.info(f"Looking for scan results at {scan_results_file}")
+    if not os.path.isfile(scan_results_file):
+        logger.error(f"Scan results file {scan_results_file} does not exist.")
+        sys.exit(1)
+
     scan_results = load_scan_results(scan_results_file)
     send_results_to_database(scan_results, api_key)
