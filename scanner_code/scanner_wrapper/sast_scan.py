@@ -150,7 +150,7 @@ def analyze_files_or_zip(uploaded_file):
     return results
 
 def send_scan_results(file_path):
-    url = 'http://127.0.0.1:8000/save_scan_results/'
+    url = 'https://pycatenaccio.cloud/save_scan_results/'
     retries = 5
     for attempt in range(retries):
         try:
