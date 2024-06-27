@@ -149,22 +149,6 @@ def analyze_files_or_zip(uploaded_file):
         results.extend(result)
     return results
 
-def send_scan_results(file_path):
-    url = 'https://pycatenaccio.cloud/save_scan_results/'
-    retries = 5
-    for attempt in range(retries):
-        try:
-            with open(file_path, 'rb') as f:
-                response = requests.post(url, files={'file': f})
-            response.raise_for_status()
-            logger.info(f"Successfully sent scan results to {url}")
-            return True
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Attempt {attempt + 1}/{retries} failed: {e}")
-            sleep(5)  # Wait before retrying
-    logger.error("All attempts to send scan results failed.")
-    return False
-
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python sast_scan.py <path_to_code> <path_to_rules>")
@@ -194,9 +178,9 @@ if __name__ == "__main__":
             json.dump({"results": scan_results}, f, indent=4)
         print(f"Scan results saved to {results_file}")
 
-        # Attempt to send the scan results
-        if not send_scan_results(results_file):
-            print("Failed to send scan results to server. Results are saved locally.")
+        # # Attempt to send the scan results
+        # if not send_scan_results(results_file):
+        #     print("Failed to send scan results to server. Results are saved locally.")
 
     except Exception as e:
         logger.error(f"Error: {e}")
